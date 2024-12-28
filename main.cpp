@@ -4,147 +4,142 @@
 #include <memory>
 #include <string>
 #include <random>
-#include <functional>
 #include <sstream>
 #include <map>
 
 using namespace std;
 
-// --- Creational Pattern: Factory for Ant Types ---
 
-// Abstract Ant Class
+
+
 class Ant {
 public:
-    virtual void performAction() = 0;
-    virtual string getType() const = 0;
+    virtual void performTask() = 0;
+    virtual string getSpecies() const = 0;
     virtual ~Ant() = default;
 };
 
-class Drone : public Ant {
+
+class WorkerAnt : public Ant {
 public:
-    void performAction() override {
-        cout << "Drone is searching for food." << endl;
+    void performTask() override {
+        cout << "Worker Ant is foraging for food." << endl;
     }
-    string getType() const override { return "Drone"; }
+
+    string getSpecies() const override {
+        return "Worker Ant";
+    }
 };
 
-class Warrior : public Ant {
+class SoldierAnt : public Ant {
 public:
-    void performAction() override {
-        cout << "Warrior is hunting enemies or searching for food." << endl;
+    void performTask() override {
+        cout << "Soldier Ant is guarding the colony." << endl;
     }
-    string getType() const override { return "Warrior"; }
+
+    string getSpecies() const override {
+        return "Soldier Ant";
+    }
 };
 
-class Queen : public Ant {
+class QueenAnt : public Ant {
 public:
-    void performAction() override {
-        cout << "Queen is spawning an egg." << endl;
+    void performTask() override {
+        cout << "Queen Ant is laying eggs." << endl;
     }
-    string getType() const override { return "Queen"; }
+
+    string getSpecies() const override {
+        return "Queen Ant";
+    }
 };
 
-// Factory Class for Ant Creation
-class AntFactory {
+
+class AntCreator {
 public:
-    static unique_ptr<Ant> createAnt(const string& antType) {
-        if (antType == "drone") {
-            return make_unique<Drone>();
-        } else if (antType == "warrior") {
-            return make_unique<Warrior>();
-        } else if (antType == "queen") {
-            return make_unique<Queen>();
+    static unique_ptr<Ant> createAnt(const string& type) {
+        if (type == "worker") {
+            return make_unique<WorkerAnt>();
+        } else if (type == "soldier") {
+            return make_unique<SoldierAnt>();
+        } else if (type == "queen") {
+            return make_unique<QueenAnt>();
         }
         return nullptr;
     }
 };
 
-// --- Structural Pattern: Builder for AntFarm ---
+
 
 class Room {
 public:
     virtual void addAnt(unique_ptr<Ant> ant) = 0;
-    virtual void performActions() = 0;
+    virtual void process() = 0;
     virtual ~Room() = default;
 };
 
 class WorkerRoom : public Room {
     vector<unique_ptr<Ant>> ants;
+
 public:
     void addAnt(unique_ptr<Ant> ant) override {
         ants.push_back(std::move(ant));
     }
 
-    void performActions() override {
+    void process() override {
         for (auto& ant : ants) {
-            ant->performAction();
+            ant->performTask();
         }
     }
 };
 
-class RestRoom : public Room {
-    vector<unique_ptr<Ant>> ants;
-public:
-    void addAnt(unique_ptr<Ant> ant) override {
-        ants.push_back(std::move(ant));
-    }
-
-    void performActions() override {
-        for (auto& ant : ants) {
-            ant->performAction();
-        }
-    }
-};
 
 class AntFarm {
-    string name;
+    string farmName;
     vector<unique_ptr<Room>> rooms;
-    vector<unique_ptr<Ant>> ants;
+    vector<unique_ptr<Ant>> colonyAnts;
     map<string, int> resources;
-
 public:
-    AntFarm(const string& name) : name(name) {}
+    AntFarm(const string& name) : farmName(name) {}
 
     void addRoom(unique_ptr<Room> room) {
         rooms.push_back(std::move(room));
     }
 
     void addAnt(unique_ptr<Ant> ant) {
-        ants.push_back(std::move(ant));
+        colonyAnts.push_back(std::move(ant));
     }
 
-    void addResource(const string& resource, int amount) {
-        resources[resource] += amount;
+    void addResource(const string& resource, int quantity) {
+        resources[resource] += quantity;
     }
 
-    void performActions() {
+    void processAnts() {
         for (auto& room : rooms) {
-            room->performActions();
+            room->process();
         }
-        for (auto& ant : ants) {
-            ant->performAction();
+        for (auto& ant : colonyAnts) {
+            ant->performTask();
         }
     }
 
-    const string& getName() const { return name; }
-
-    void displaySummary() {
-        cout << "Colony: " << name << endl;
+    void displayInfo() {
+        cout << "Ant Farm: " << farmName << endl;
         cout << "Resources: " << endl;
         for (const auto& res : resources) {
             cout << res.first << ": " << res.second << endl;
         }
         cout << "Ants: " << endl;
-        for (const auto& ant : ants) {
-            cout << " - " << ant->getType() << endl;
+        for (const auto& ant : colonyAnts) {
+            cout << " - " << ant->getSpecies() << endl;
         }
     }
 };
 
 
+
 class Meadow {
-    unordered_map<int, unique_ptr<AntFarm>> colonies;
-    int nextColonyId = 1;
+    unordered_map<int, unique_ptr<AntFarm>> antFarms;
+    int nextFarmId = 1;
     static Meadow* instance;
 
     Meadow() {}
@@ -157,99 +152,77 @@ public:
         return instance;
     }
 
-    int spawnColony(const string& speciesType) {
-        unique_ptr<AntFarm> newFarm = make_unique<AntFarm>("Farm" + to_string(nextColonyId));
-        int numAnts = (rand() % 5) + 5;
-        for (int i = 0; i < numAnts; ++i) {
-            auto ant = AntFactory::createAnt(speciesType);
-            newFarm->addAnt(std::move(ant));
+    int createAntFarm(const string& species) {
+        auto farm = make_unique<AntFarm>("Farm" + to_string(nextFarmId));
+        for (int i = 0; i < 5; ++i) {
+            auto ant = AntCreator::createAnt(species);
+            farm->addAnt(std::move(ant));
         }
-        colonies[nextColonyId] = std::move(newFarm);
-        return nextColonyId++;
+        int farmId = nextFarmId++;
+        antFarms[farmId] = std::move(farm);
+        return farmId;
     }
 
-    void addResourceToColony(int colonyId, const string& resource, int amount) {
-        if (colonies.find(colonyId) != colonies.end()) {
-            colonies[colonyId]->addResource(resource, amount);
-        }
-    }
-
-    void performActions() {
-        for (auto& [id, farm] : colonies) {
-            farm->performActions();
+    void addResourceToFarm(int farmId, const string& resource, int quantity) {
+        if (antFarms.find(farmId) != antFarms.end()) {
+            antFarms[farmId]->addResource(resource, quantity);
         }
     }
 
-    bool checkSimulationEnd() {
-        return colonies.size() <= 1;
-    }
-
-    void displayColonyStatus(int colonyId) {
-        if (colonies.find(colonyId) != colonies.end()) {
-            colonies[colonyId]->displaySummary();
-        } else {
-            cout << "Colony not found!" << endl;
+    void processAllFarms() {
+        for (auto& [id, farm] : antFarms) {
+            farm->processAnts();
         }
     }
 
-    unordered_map<int, unique_ptr<AntFarm>>& getColonies() {
-        return colonies;
+    bool isSimulationOver() {
+        return antFarms.size() <= 1;
+    }
+
+    void showFarmInfo(int farmId) {
+        if (antFarms.find(farmId) != antFarms.end()) {
+            antFarms[farmId]->displayInfo();
+        }
+    }
+
+    unordered_map<int, unique_ptr<AntFarm>>& getAllFarms() {
+        return antFarms;
     }
 };
+
 
 Meadow* Meadow::instance = nullptr;
 
 
 
-class Mediator {
-    Meadow* meadow;
-
-public:
-    Mediator(Meadow* meadow) : meadow(meadow) {}
-
-    void tick(int ticks = 1) {
-        for (int i = 0; i < ticks; ++i) {
-            meadow->performActions();
-        }
-    }
-};
-
-
-
-void processCommand(const string& command) {
+void handleCommand(const string& command) {
     Meadow* meadow = Meadow::getInstance();
-    Mediator mediator(meadow);
     stringstream ss(command);
-    string cmd;
-    ss >> cmd;
+    string action;
+    ss >> action;
 
-    if (cmd == "spawn") {
+    if (action == "spawn") {
         int x, y;
         string species;
         ss >> x >> y >> species;
-        int colonyId = meadow->spawnColony(species);
-        cout << "Colony " << colonyId << " of species " << species << " spawned at position (" << x << ", " << y << ")." << endl;
+        int farmId = meadow->createAntFarm(species);
+        cout << "Ant Farm " << farmId << " created with species: " << species << " at position (" << x << ", " << y << ")." << endl;
     }
-    else if (cmd == "give") {
-        int colonyId, amount;
+    else if (action == "give") {
+        int farmId, amount;
         string resource;
-        ss >> colonyId >> resource >> amount;
-        meadow->addResourceToColony(colonyId, resource, amount);
-        cout << "Gave " << amount << " " << resource << " to colony " << colonyId << "." << endl;
+        ss >> farmId >> resource >> amount;
+        meadow->addResourceToFarm(farmId, resource, amount);
+        cout << "Given " << amount << " " << resource << " to farm " << farmId << "." << endl;
     }
-    else if (cmd == "tick") {
-        int ticks = 1;
-        if (ss >> ticks) {
-            mediator.tick(ticks);
-        } else {
-            mediator.tick();
-        }
-        cout << "Performed " << ticks << " tick(s)." << endl;
+    else if (action == "tick") {
+        meadow->processAllFarms();
+        cout << "Performed a simulation tick." << endl;
     }
-    else if (cmd == "summary") {
-        int colonyId;
-        ss >> colonyId;
-        meadow->displayColonyStatus(colonyId);
+    else if (action == "summary") {
+        int farmId;
+        ss >> farmId;
+        meadow->showFarmInfo(farmId);
     }
     else {
         cout << "Invalid command." << endl;
@@ -257,10 +230,11 @@ void processCommand(const string& command) {
 }
 
 
+
 int main() {
     string command;
-    cout << "Welcome to the Ant Farm Simulation! Type commands to control the simulation." << endl;
-    cout << "Available commands: spawn X Y T, give I R A, tick [T], summary I" << endl;
+    cout << "Welcome to the Ant Farm Simulation!" << endl;
+    cout << "Commands available: spawn X Y T, give I R A, tick, summary I" << endl;
 
     while (true) {
         cout << "> ";
@@ -268,7 +242,7 @@ int main() {
         if (command == "exit") {
             break;
         }
-        processCommand(command);
+        handleCommand(command);
     }
 
     cout << "Simulation ended!" << endl;
